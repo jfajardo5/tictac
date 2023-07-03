@@ -14,10 +14,16 @@ func main() {
 	game := New()
 	game.initPlayers()
 	for !game.Over {
-		game.DrawBoard()
-		game.PlayRound()
+		for i := range game.Players {
+			game.DrawBoard()
+			game.PlayRound(game.Players[i])
+			if game.IsGameOver() {
+				break
+			}
+		}
 		game.Rounds++
 	}
+	game.DrawBoard()
 	fmt.Println("\n\nGame Over!")
 	fmt.Println(game.Result)
 }
@@ -27,32 +33,32 @@ type TicTacToe struct {
 	Board   [9]string
 	Rounds  int
 	Over    bool
-	Player1 string
-	Player2 string
 	Result  string
+	Players []Player
+}
+
+// Player object
+type Player struct {
+	Name   string
+	Marker string
 }
 
 // TicTacToe init function
 func New() *TicTacToe {
 	return &TicTacToe{
 		Board:  initBoard(),
-		Rounds: 0,
+		Rounds: 1,
 		Over:   false,
 	}
 }
 
 // Checks for determining game status
 func (t *TicTacToe) IsGameOver() bool {
-	// Player 1 checks
-	if t.verticalVictory(t.Player1) || t.horizontalVictory(t.Player1) || t.diagonalVictory(t.Player1) {
-		t.Result = "Player 1 wins!"
-		t.Over = true
-	}
-
-	// Player 2 checks
-	if t.verticalVictory(t.Player2) || t.horizontalVictory(t.Player2) || t.diagonalVictory(t.Player2) {
-		t.Result = "Player 2 wins!"
-		t.Over = true
+	for i := range t.Players {
+		if t.verticalVictory(t.Players[i].Marker) || t.horizontalVictory(t.Players[i].Marker) || t.diagonalVictory(t.Players[i].Marker) {
+			t.Result = fmt.Sprintf("%s wins!", t.Players[i].Name)
+			t.Over = true
+		}
 	}
 
 	if t.noSquaresLeft() {
@@ -66,7 +72,7 @@ func (t *TicTacToe) IsGameOver() bool {
 // Checks to see if moves can still be made
 func (t *TicTacToe) noSquaresLeft() bool {
 	for i := range t.Board {
-		if t.Board[i] != t.Player1 && t.Board[i] != t.Player2 {
+		if t.Board[i] != "[X]" && t.Board[i] != "[O]" {
 			return false
 		}
 	}
@@ -74,10 +80,10 @@ func (t *TicTacToe) noSquaresLeft() bool {
 }
 
 // Check for horizontal win condition
-func (t *TicTacToe) horizontalVictory(player string) bool {
+func (t *TicTacToe) horizontalVictory(marker string) bool {
 	for i := range t.Board {
 		if (i+1)%3 == 0 {
-			if t.Board[i] == player && t.Board[i-1] == player && t.Board[i-2] == player {
+			if t.Board[i] == marker && t.Board[i-1] == marker && t.Board[i-2] == marker {
 				return true
 			}
 		}
@@ -86,9 +92,9 @@ func (t *TicTacToe) horizontalVictory(player string) bool {
 }
 
 // Check for vertical win condition
-func (t *TicTacToe) verticalVictory(player string) bool {
+func (t *TicTacToe) verticalVictory(marker string) bool {
 	for i := 0; i < 3; i++ {
-		if t.Board[i] == player && t.Board[i+3] == player && t.Board[i+6] == player {
+		if t.Board[i] == marker && t.Board[i+3] == marker && t.Board[i+6] == marker {
 			return true
 		}
 	}
@@ -96,59 +102,67 @@ func (t *TicTacToe) verticalVictory(player string) bool {
 }
 
 // Check for diagonal win condition
-func (t *TicTacToe) diagonalVictory(player string) bool {
-	if t.Board[0] == player && t.Board[4] == player && t.Board[8] == player {
+func (t *TicTacToe) diagonalVictory(marker string) bool {
+	if t.Board[0] == marker && t.Board[4] == marker && t.Board[8] == marker {
 		return true
 	}
-	if t.Board[2] == player && t.Board[4] == player && t.Board[6] == player {
+	if t.Board[2] == marker && t.Board[4] == marker && t.Board[6] == marker {
 		return true
 	}
 	return false
 }
 
-// Logic for a game round
-// TODO re-factor this. Don't like the repetition implemented here
-func (t *TicTacToe) PlayRound() {
-
-	player1Selection := 0
-	for !t.ValidateInput(player1Selection) {
-		fmt.Println("\nPlayer 1, please select a numbered square:")
-		fmt.Scan(&player1Selection)
+// Logic for a player's turn
+func (t *TicTacToe) PlayRound(player Player) {
+	selection := 0
+	for !t.ValidateInput(selection) {
+		fmt.Printf("\n%s, please select a numbered square:\n", player.Name)
+		fmt.Scan(&selection)
 	}
-	t.Board[player1Selection-1] = t.Player1
-	t.DrawBoard()
-	if t.IsGameOver() {
-		return
-	}
-
-	player2Selection := 0
-	for !t.ValidateInput(player2Selection) {
-		fmt.Println("\nPlayer 2, please select a numbered square:")
-		fmt.Scan(&player2Selection)
-	}
-	t.Board[player2Selection-1] = t.Player2
-	t.IsGameOver()
+	t.Board[selection-1] = player.Marker
 }
 
 // Initialize player values
 // Gets input from players and assigns their marks
 func (t *TicTacToe) initPlayers() {
-	var player1 string
-	fmt.Println("Player 1: Tic or Tac?")
-	fmt.Println("Enter X to use X")
-	fmt.Println("Enter anything else to use O")
-	fmt.Scanln(&player1)
-	t.Player1 = "[O]"
-	t.Player2 = "[X]"
-	if player1 == "X" || player1 == "x" {
-		t.Player1 = "[X]"
-		t.Player2 = "[O]"
+	var name string
+	for i := 0; i < 2; i++ {
+		fmt.Printf("Player %d: Please enter your name.\n", i+1)
+		fmt.Scanln(&name)
+		if i == 0 {
+			t.Players = append(t.Players, Player{Name: name, Marker: getMarker(name)})
+		} else {
+			t.Players = append(t.Players, Player{Name: name, Marker: t.getOppositeMarker()})
+		}
 	}
-	fmt.Printf("Player 1 is %s \n", t.Player1)
-	fmt.Printf("Player 2 is %s \n", t.Player2)
 }
 
-// Print the board
+// Returns the marker Player 1 did not pick
+func (t *TicTacToe) getOppositeMarker() string {
+	for i := range t.Players {
+		if t.Players[i].Marker == "[O]" {
+			return "[X]"
+		}
+	}
+	return "[O]"
+}
+
+// Gets input for marker to use from Player 1
+func getMarker(player string) string {
+	marker := 0
+	fmt.Printf("%s, choose your marker:\n", player)
+	for marker != 1 && marker != 2 {
+		fmt.Println("Enter 1 to use O")
+		fmt.Println("Enter 2 to use X")
+		fmt.Scan(&marker)
+	}
+	if marker == 1 {
+		return "[O]"
+	}
+	return "[X]"
+}
+
+// Draw the board
 func (t *TicTacToe) DrawBoard() {
 	fmt.Printf("\n*-----Round %d-----*\n\n", t.Rounds)
 	for i := range t.Board {
@@ -171,8 +185,10 @@ func (t *TicTacToe) ValidateInput(input int) bool {
 	if input < 1 || input > 9 {
 		return false
 	}
-	if t.Board[input-1] == t.Player1 || t.Board[input-1] == t.Player2 {
-		return false
+	for i := range t.Players {
+		if t.Board[input-1] == t.Players[i].Marker {
+			return false
+		}
 	}
 	return true
 }
